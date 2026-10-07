@@ -1,0 +1,45 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>728d6471-50fe-42b4-84e6-18f0c63eea9e</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Repository\GameSnapshotRepository.cs~RF1a0a9c5.TMP" />
+  </ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Fcg.UserLibrary.IntegrationTests" />
+	</ItemGroup>
+	
+  <ItemGroup>
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
+    <PackageReference Include="AspNetCore.HealthChecks.SqlServer" Version="9.0.0" />
+    <PackageReference Include="Fcg.Core.SharedContracts" Version="1.1.4" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.15" />
+    <PackageReference Include="Fcg.Core.WebApi" Version="1.0.8" />
+    <PackageReference Include="MassTransit.EntityFrameworkCore" Version="8.4.1" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.4.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.15" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.15">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.15" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.15">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.15" />
+    <PackageReference Include="MediatR" Version="14.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="6.0.1" />
+    <PackageReference Include="MongoDB.Driver" Version="3.11.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Fcg.UserLibrary.Application\Fcg.UserLibrary.Application.csproj" />
+  </ItemGroup>
+
+</Project>
