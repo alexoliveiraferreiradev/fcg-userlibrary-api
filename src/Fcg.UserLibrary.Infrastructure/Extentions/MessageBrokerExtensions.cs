@@ -1,4 +1,5 @@
 ﻿using Fcg.Core.SharedContracts.MessageContracts;
+using Fcg.Core.SharedContracts.Messaging;
 using Fcg.UserLibrary.Infrastructure.Consumers;
 using Fcg.UserLibrary.Infrastructure.MessageBroker;
 using Fcg.UserLibrary.Infrastructure.Persistence;
@@ -31,10 +32,10 @@ namespace Fcg.UserLibrary.API.Extensions
 
                     cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(5)));
 
-                    cfg.Message<IGameUserLibraryIntegrationEvent>(m => m.SetEntityName(ServiceBusTopics.GameUserLibrary));
-                    cfg.Message<IGameCreatedIntegrationEvent>(m => m.SetEntityName(ServiceBusTopics.GameCreated));
-                    cfg.Message<IUserDeactivatedIntegrationEvent>(m => m.SetEntityName(ServiceBusTopics.UserDeactivated));
-                    cfg.Message<IUserReactivatedIntegrationEvent>(m => m.SetEntityName(ServiceBusTopics.UserReactivated));
+                    cfg.Message<IGameUserLibraryIntegrationEvent>(m => m.SetEntityName(Topics.GameUserLibrary));
+                    cfg.Message<IGameCreatedIntegrationEvent>(m => m.SetEntityName(Topics.GameCreated));
+                    cfg.Message<IUserDeactivatedIntegrationEvent>(m => m.SetEntityName(Topics.UserDeactivated));
+                    cfg.Message<IUserReactivatedIntegrationEvent>(m => m.SetEntityName(Topics.UserReactivated));
 
                     cfg.ReceiveEndpoint(serviceBusConfig.UserLibraryIntegrationQueue, e =>
                     {
