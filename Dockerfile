@@ -21,7 +21,8 @@ RUN dotnet restore "./Fcg.UserLibrary.API/Fcg.UserLibrary.API.csproj"
 COPY src/ .
 WORKDIR "/src/Fcg.UserLibrary.API"
 
-RUN dotnet publish "./Fcg.UserLibrary.API.csproj" -c $BUILD_CONFIGURATION --no-restore -o /app/publish /p:UseAppHost=false
+# Sem --no-restore: o publish refaz o restore no Linux e não depende de nenhum obj/ que venha no contexto.
+RUN dotnet publish "./Fcg.UserLibrary.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 RUN dotnet ef migrations bundle --no-build --configuration $BUILD_CONFIGURATION --self-contained -r linux-x64 -o /app/efbundle
 
 FROM base AS final
