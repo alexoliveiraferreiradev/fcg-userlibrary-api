@@ -18,11 +18,11 @@
   <ItemGroup>
     <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
     <PackageReference Include="AspNetCore.HealthChecks.SqlServer" Version="9.0.0" />
-    <PackageReference Include="Fcg.Core.SharedContracts" Version="1.1.4" />
+    <PackageReference Include="Fcg.Core.SharedContracts" Version="1.1.7" />
+    <PackageReference Include="MassTransit.Azure.ServiceBus.Core" Version="8.4.1" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.15" />
     <PackageReference Include="Fcg.Core.WebApi" Version="1.0.8" />
     <PackageReference Include="MassTransit.EntityFrameworkCore" Version="8.4.1" />
-    <PackageReference Include="MassTransit.RabbitMQ" Version="8.4.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.15" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.15">
       <PrivateAssets>all</PrivateAssets>

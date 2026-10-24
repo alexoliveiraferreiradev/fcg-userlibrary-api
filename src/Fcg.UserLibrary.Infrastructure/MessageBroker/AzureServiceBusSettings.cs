@@ -1,10 +1,12 @@
-﻿using Fcg.Core.WebApi.MessageBroker;
 using System.ComponentModel.DataAnnotations;
 
 namespace Fcg.UserLibrary.Infrastructure.MessageBroker
 {
-    public class UserLibraryServiceRabbitMqSettings : RabbitMqConnectionSettings
+    internal class AzureServiceBusSettings
     {
+        public const string SectionName = "AzureServiceBus";
+        [Required]
+        public string ConnectionString { get; set; } = string.Empty;
         [Required(ErrorMessage = "UserLibraryIntegrationQueue é obrigatório")]
         public string UserLibraryIntegrationQueue { get; set; } = string.Empty;
         [Required(ErrorMessage = "DeactiveUserIntegrationQueue é obrigatório")]
