@@ -1,7 +1,7 @@
 ﻿using Fcg.UserLibrary.Application.Features.Commands.OrderFinalize;
 using Fcg.UserLibrary.Domain.Entities;
 using Fcg.UserLibrary.Infrastructure.Repository;
-using Fcg.UserLibrary.Infrastructure.Persistence.Mongo;
+using Fcg.UserLibrary.IntegrationTests.Fixtures;
 using FluentAssertions;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -10,15 +10,13 @@ using Moq;
 
 namespace Fcg.UserLibrary.IntegrationTests.Features.Commands.OrderFinalize
 {
-    // Testes manuais contra um MongoDB real.
+    // Handler de ponta a ponta contra MongoDB real (Testcontainers); logger e mediator sao mockados.
+    [Collection("Mongo")]
     public class LibraryOrderCommandHandlerMongoIntegrationTests
     {
-        private static IMongoDatabase CreateDatabase()
-        {
-            MongoConventions.EnsureRegistered();
-            var client = new MongoClient("mongodb://admin:password123@localhost:27017/?directConnection=true");
-            return client.GetDatabase($"fcg_userlibraries_playtest_{Guid.NewGuid():N}");
-        }
+        private readonly MongoFixture _fixture;
+
+        public LibraryOrderCommandHandlerMongoIntegrationTests(MongoFixture fixture) => _fixture = fixture;
 
         private static LibraryOrderCommandHandler CreateHandler(
             LibraryEntryRepository libraryRepo,
@@ -30,11 +28,13 @@ namespace Fcg.UserLibrary.IntegrationTests.Features.Commands.OrderFinalize
                 new Mock<IMediator>().Object);
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task Handle_ShouldPersistLibraryInMongo_WhenSimulatingRealUserPurchase()
         {
+            _fixture.SkipIfUnavailable();
+
             var userId = Guid.NewGuid();    
-            var database = CreateDatabase();    
+            var database = _fixture.CreateDatabase();
             var libraryRepo = new LibraryEntryRepository(database);   
             var gameRepo = new GameSnapshotRepository(database);
 
