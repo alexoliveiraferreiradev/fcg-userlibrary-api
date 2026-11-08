@@ -33,7 +33,8 @@ namespace Fcg.UserLibrary.Application.Features.Queries.GetPagedLibrary
                 GameName = l.GameLibrary.Name,
                 Description = l.GameLibrary.Description,
                 Genre = l.GameLibrary.Genre,
-                AcquiredAt = l.CreatedAt
+                AcquiredAt = l.CreatedAt,
+                Rating = l.Rating
             }).ToList();
 
             var result = new PagedResult<UserLibraryItemResponse>(items, request.Page, request.PageSize, pagedLibrary.TotalItems);
