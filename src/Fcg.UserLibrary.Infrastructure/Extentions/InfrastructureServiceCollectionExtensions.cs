@@ -1,4 +1,5 @@
-﻿using Fcg.UserLibrary.API.Extensions;
+﻿using Fcg.Core.Abstractions.Interfaces;
+using Fcg.UserLibrary.API.Extensions;
 using Fcg.UserLibrary.Application.Common.Interfaces;
 using Fcg.UserLibrary.Domain.Repositories;
 using Fcg.UserLibrary.Infrastructure.Caching;
@@ -22,6 +23,7 @@ namespace Fcg.UserLibrary.Infrastructure.Extentions
             services.AddRedisExtension(configuration);  
             services.AddMassTransitExtension(configuration);    
             services.AddScoped<IDbConnection>(sp => sp.GetRequiredService<LibraryDbContext>().Database.GetDbConnection());
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<ICacheService, CacheService>();
             services.AddScoped<ILibraryEntryRepository, LibraryEntryRepository>();
             services.AddScoped<IGameRepository, GameSnapshotRepository>();

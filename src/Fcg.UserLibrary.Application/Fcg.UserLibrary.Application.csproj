@@ -9,7 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.1.79" />    
+    <PackageReference Include="Dapper" Version="2.1.79" />
+    <PackageReference Include="Fcg.Core.SharedContracts" Version="1.1.8" />
     <PackageReference Include="MediatR" Version="14.1.0" />
   </ItemGroup>
 
