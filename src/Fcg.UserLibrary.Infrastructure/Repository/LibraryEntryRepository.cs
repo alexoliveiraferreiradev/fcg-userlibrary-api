@@ -34,6 +34,15 @@ namespace Fcg.UserLibrary.Infrastructure.Repository
             return await _collection.Find(filter).AnyAsync(cancellationToken);
         }
 
+        public async Task<LibraryEntry?> GetByUserAndGameAsync(Guid userId, Guid gameId, CancellationToken cancellationToken)
+        {
+            var filter = Builders<LibraryEntry>.Filter.And(
+                Builders<LibraryEntry>.Filter.Eq(l => l.Customer.CustomerId, userId),
+                Builders<LibraryEntry>.Filter.Eq(l => l.GameLibrary.GameId, gameId));
+
+            return await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+        }
+
         public async Task<bool> UpdateLibrary(LibraryEntry library)
         {
             var result = await _collection.ReplaceOneAsync(l => l.Id == library.Id, library);
