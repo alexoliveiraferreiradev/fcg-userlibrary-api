@@ -7,6 +7,7 @@
         public string Description { get; set; }
         public string Genre { get; set; }
         public DateTime AcquiredAt { get; set; }
+        public double? Rating { get; set; }
 
         public UserLibraryItemResponse()
         {

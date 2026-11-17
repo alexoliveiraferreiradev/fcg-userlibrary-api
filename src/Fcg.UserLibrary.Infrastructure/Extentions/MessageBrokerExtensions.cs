@@ -1,4 +1,5 @@
-﻿using Fcg.Core.SharedContracts.MessageContracts;
+﻿using Fcg.Core.SharedContracts.Interfaces;
+using Fcg.Core.SharedContracts.MessageContracts;
 using Fcg.Core.SharedContracts.Messaging;
 using Fcg.UserLibrary.Infrastructure.Consumers;
 using Fcg.UserLibrary.Infrastructure.MessageBroker;
@@ -14,6 +15,8 @@ namespace Fcg.UserLibrary.API.Extensions
     {
         public static IServiceCollection AddMassTransitExtension(this IServiceCollection services, IConfiguration configuration)
         {
+            services.AddScoped<IIntegrationEventPublisher, MassTransitIntegrationEventPublisher>();
+
             services.AddOptions<AzureServiceBusSettings>().BindConfiguration(AzureServiceBusSettings.SectionName)
            .ValidateDataAnnotations().ValidateOnStart();
 
@@ -36,6 +39,7 @@ namespace Fcg.UserLibrary.API.Extensions
                     cfg.Message<IGameCreatedIntegrationEvent>(m => m.SetEntityName(Topics.GameCreated));
                     cfg.Message<IUserDeactivatedIntegrationEvent>(m => m.SetEntityName(Topics.UserDeactivated));
                     cfg.Message<IUserReactivatedIntegrationEvent>(m => m.SetEntityName(Topics.UserReactivated));
+                    cfg.Message<IGameRatingIntegrationEvent>(m => m.SetEntityName(Topics.GameRated));
 
                     cfg.ReceiveEndpoint(serviceBusConfig.UserLibraryIntegrationQueue, e =>
                     {
