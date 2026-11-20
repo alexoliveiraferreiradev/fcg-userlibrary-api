@@ -8,7 +8,9 @@ O serviço é essencialmente **reativo**: a biblioteca nunca é alterada por cha
 
 ## 🔄 Fluxo de Eventos e Responsabilidades
 
-A comunicação é assíncrona, via **RabbitMQ** (abstraído pelo **MassTransit**).
+A comunicação é assíncrona, via **Azure Service Bus** (tópicos e subscriptions, abstraído pelo **MassTransit** com `UsingAzureServiceBus`).
+
+Cada contrato é publicado em um **tópico com nome fixo** (`SetEntityName` com as constantes da classe `Topics` do `Fcg.Core.SharedContracts`). Cada *consumer* tem a sua própria **fila** (`ReceiveEndpoint`), e o MassTransit cria a *subscription* que encaminha as mensagens do tópico para essa fila. Todos os *receive endpoints* usam o **Inbox/Outbox do EF Core** (`UseEntityFrameworkOutbox<LibraryDbContext>`) e retry de 3 tentativas com intervalo de 5 segundos antes de a mensagem ir para a fila de erro.
 
 ```mermaid
 sequenceDiagram
@@ -31,16 +33,22 @@ sequenceDiagram
 
 ### 📥 Eventos Consumidos
 
-| Evento | Origem | O que faz |
-| :--- | :--- | :--- |
-| `IGameUserLibraryIntegrationEvent` | Order API | **Adiciona o jogo** à biblioteca, após o pagamento aprovado. |
-| `IGameCreatedIntegrationEvent` | Catalog API | Cria o *snapshot* local do jogo (nome, descrição, gênero). |
-| `IUserDeactivatedIntegrationEvent` | Users API | Desativa a biblioteca, suspendendo o acesso ao acervo. |
-| `IUserReactivatedIntegrationEvent` | Users API | Reativa a biblioteca do usuário. |
+| Evento | Tópico | Fila (configuração `AzureServiceBus:*`) | Origem | O que faz |
+| :--- | :--- | :--- | :--- | :--- |
+| `IGameUserLibraryIntegrationEvent` | `game-user-library` | `user-library-created-integration-queue` (`UserLibraryIntegrationQueue`) | Order API | **Adiciona o jogo** à biblioteca, após o pagamento aprovado. |
+| `IGameCreatedIntegrationEvent` | `game-created` | `game-created-library-integration-queue` (`UserLibraryGameCreatedIntegrationQueue`) | Catalog API | Cria o *snapshot* local do jogo (nome, descrição, gênero). |
+| `IUserDeactivatedIntegrationEvent` | `user-deactivated` | `user-library-deactived-integration-queue` (`DeactiveUserIntegrationQueue`) | Users API | Desativa a biblioteca, suspendendo o acesso ao acervo. |
+| `IUserReactivatedIntegrationEvent` | `user-reactivated` | `user-library-game-reactive-integration-queue` (`ReactiveUserIntegrationQueue`) | Users API | Reativa a biblioteca do usuário. |
+
+> Os nomes de fila acima são os do `k8s/userlibrary-configmap.yaml`; em outros ambientes, defina-os nas variáveis `AzureServiceBus__*`.
 
 ### 📤 Eventos Publicados
 
-Nenhum. Este serviço é **terminal** no fluxo de eventos: ele consome e persiste, mas não propaga novos eventos de integração ao ecossistema.
+| Evento | Tópico | Destino | Quando |
+| :--- | :--- | :--- | :--- |
+| `IGameRatingIntegrationEvent` | `game-rated` | Catalog API | O jogador avalia um jogo da sua biblioteca (`PUT /api/library/{gameId}/rating`). A Catalog API recalcula a nota média do jogo. |
+
+O evento é gravado no **Outbox do MassTransit** (SQL Server) e publicado no Azure Service Bus a partir dele. Como a nota fica no MongoDB e o outbox no SQL Server, não há transação entre os dois: se o evento não puder ser gravado, a nota é restaurada ao valor anterior e o erro é devolvido, para que o jogador tente novamente.
 
 ### 🗂️ Snapshots Locais (Replicação por Eventos)
 
@@ -52,12 +60,13 @@ A User Library **não consulta a Catalog API** para exibir os dados de um jogo. 
 
 | Método | Rota | Descrição |
 | :--- | :--- | :--- |
-| `GET` | `/api/library` | Lista, de forma paginada, a biblioteca de games do usuário autenticado. |
+| `GET` | `/api/library` | Lista, de forma paginada, a biblioteca de games do usuário autenticado (com a nota dada pelo jogador). |
+| `PUT` | `/api/library/{gameId}/rating` | Registra ou altera a avaliação do jogador para um jogo da sua biblioteca e publica `IGameRatingIntegrationEvent`. |
 
 O endpoint exige autenticação **JWT** e devolve apenas o acervo do usuário identificado no token. Em execução pelo ecossistema completo, o acesso se dá pelo **Kong** em `http://localhost:8000/library` — o gateway valida o token e aplica rate limiting antes de encaminhar a requisição. A documentação **Swagger** fica disponível em `/swagger` quando a API é executada isoladamente.
 
 > [!NOTE]
-> Não há endpoints de escrita — nem para adicionar, nem para remover jogos. Um título só entra na biblioteca pelo evento `GameUserLibraryEvent`, publicado pela *Order API* depois que o pagamento foi aprovado. Essa restrição é intencional: impede que o acervo seja alterado sem passar pelo fluxo de compra.
+> Não há endpoints para adicionar ou remover jogos — a única escrita via HTTP é a avaliação de um jogo que já está na biblioteca. Um título só entra na biblioteca pelo evento `GameUserLibraryEvent`, publicado pela *Order API* depois que o pagamento foi aprovado. Essa restrição é intencional: impede que o acervo seja alterado sem passar pelo fluxo de compra.
 
 ### 🩺 Health Checks
 
@@ -76,7 +85,7 @@ O `docker-compose.yml` do repositório de infraestrutura usa `/health/readiness`
 - **MongoDB (MongoDB.Driver)**: Banco de dados principal do domínio — armazena `LibraryEntry` e `GameSnapshot`, tanto na escrita quanto na leitura (listagem paginada do acervo). Coleções e índices são criados automaticamente na subida da aplicação, sem migrations.
 - **Entity Framework Core 9.0 + SQL Server**: não guarda dados de domínio; é usado exclusivamente pelo **Transactional Outbox/Inbox do MassTransit**, garantindo consistência entre a persistência de cada evento consumido e o registro correspondente no outbox.
 - **MediatR (v14)**: Implementação do padrão Mediator para desacoplamento e gerenciamento de comandos internos.
-- **MassTransit**: Framework de mensageria que abstrai a comunicação com o **RabbitMQ**, com outbox baseado em EF Core e política de retry por endpoint.
+- **MassTransit & Azure Service Bus**: Framework de mensageria que abstrai a comunicação com o **Azure Service Bus** (tópicos, subscriptions e filas por *consumer*), com outbox baseado em EF Core e política de retry.
 - **Redis (StackExchange)**: Cache distribuído da listagem da biblioteca.
 - **Serilog**: Logging estruturado em formato compacto.
 - **xUnit & Moq**: Frameworks para construção e execução de testes unitários.
@@ -129,13 +138,12 @@ Ao rodar localmente, preencha o `appsettings.json`:
     "Host": "localhost", "Port": "1433", "DatabaseName": "Fcg_UserLibraries",
     "Username": "sa", "Password": "SuaSenhaSegura"
   },
-  "RabbitMqSettings": {
-    "Host": "localhost", "Port": "5672",
-    "Username": "guest", "Password": "guest",
-    "UserLibraryIntegrationQueue": "user-library-integration",
-    "UserLibraryGameCreatedIntegrationQueue": "user-library-game-created",
-    "DeactiveUserIntegrationQueue": "deactive-user-integration",
-    "ReactiveUserIntegrationQueue": "reactive-user-integration"
+  "AzureServiceBus": {
+    "ConnectionString": "Endpoint=sb://<namespace>.servicebus.windows.net/;SharedAccessKeyName=<policy>;SharedAccessKey=<chave>",
+    "UserLibraryIntegrationQueue": "user-library-created-integration-queue",
+    "UserLibraryGameCreatedIntegrationQueue": "game-created-library-integration-queue",
+    "DeactiveUserIntegrationQueue": "user-library-deactived-integration-queue",
+    "ReactiveUserIntegrationQueue": "user-library-game-reactive-integration-queue"
   },
   "RedisSettings": {
     "Host": "localhost", "Port": "6379",
@@ -155,7 +163,10 @@ Ao rodar localmente, preencha o `appsettings.json`:
 > [!WARNING]
 > O `JwtSettings.Issuer` precisa ser **idêntico** ao configurado nos demais serviços e ao campo `key` do consumidor declarado no `kong.yml`. É por esse valor que o Kong localiza o segredo para validar a assinatura do token — uma divergência faz a rota `/library` responder `401` sem erro explicativo.
 
-No **Docker Compose** e no **Kubernetes**, essas variáveis são injetadas via `.env`, `ConfigMaps` e `Secrets`, no formato `DatabaseSettings__Host`, `RabbitMqSettings__Port` e assim por diante.
+> [!NOTE]
+> **AzureServiceBus** exige um namespace do Azure Service Bus no tier **Standard** ou superior (necessário para tópicos). A seção é validada na subida (`ValidateOnStart`): sem a connection string ou qualquer um dos nomes de fila, a API não inicia.
+
+No **Docker Compose** e no **Kubernetes**, essas variáveis são injetadas via `.env`, `ConfigMaps` (`k8s/userlibrary-configmap.yaml`) e segredos do **Azure Key Vault** (`fcg-secrets`), no formato `DatabaseSettings__Host`, `AzureServiceBus__ConnectionString`, `AzureServiceBus__UserLibraryIntegrationQueue` e assim por diante.
 
 ---
 
@@ -163,7 +174,7 @@ No **Docker Compose** e no **Kubernetes**, essas variáveis são injetadas via `
 
 ### Opção 1: Ecossistema completo (recomendado)
 
-Este microsserviço depende de MongoDB, SQL Server, RabbitMQ, Redis e — para que a biblioteca receba jogos — da *Order API* e da *Payments API*. A forma mais simples de executá-lo é pelo repositório de orquestração [fcg-infrastructure](https://github.com/alexoliveiraferreiradev/fcg-infrastructure), que sobe todo o ambiente com um único comando:
+Este microsserviço depende de MongoDB, SQL Server, Azure Service Bus, Redis e — para que a biblioteca receba jogos — da *Order API* e da *Payments API*. A forma mais simples de executá-lo é pelo repositório de orquestração [fcg-infrastructure](https://github.com/alexoliveiraferreiradev/fcg-infrastructure), que sobe todo o ambiente com um único comando:
 
 ```bash
 docker compose up -d
@@ -173,7 +184,8 @@ docker compose up -d
 
 #### Pré-requisitos
 - SDK do [.NET 9.0](https://dotnet.microsoft.com/download/dotnet/9.0) instalado.
-- MongoDB, SQL Server, RabbitMQ e Redis em execução e acessíveis.
+- MongoDB, SQL Server e Redis em execução e acessíveis.
+- Um namespace do **Azure Service Bus** (tier Standard ou superior) e a sua connection string.
 
 ```bash
 dotnet restore
